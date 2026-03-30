@@ -1,6 +1,6 @@
 import {Command} from '@oclif/core'
 
-import {globalConfigFilePath, resolveApiKey, type ResolvedApiKey, resolvePerplexityApiKey, resolveSupadataApiKey} from '../../lib/config.js'
+import {globalConfigFilePath, resolveApiKey, type ResolvedApiKey, resolvePerplexityApiKey, resolveSupadataApiKey, resolveTavilyApiKey} from '../../lib/config.js'
 import {zurfBaseFlags} from '../../lib/flags.js'
 import {printJson} from '../../lib/json-output.js'
 
@@ -55,18 +55,20 @@ Resolution order: env var → project .zurf/config.json (walk-up) → global con
     const bbResolved = resolveApiKey({globalConfigDir: this.config.configDir})
     const pplxResolved = resolvePerplexityApiKey({globalConfigDir: this.config.configDir})
     const sdResolved = resolveSupadataApiKey({globalConfigDir: this.config.configDir})
-    const allNone = bbResolved.source === 'none' && pplxResolved.source === 'none' && sdResolved.source === 'none'
+    const tvResolved = resolveTavilyApiKey({globalConfigDir: this.config.configDir})
+    const allNone = bbResolved.source === 'none' && pplxResolved.source === 'none' && sdResolved.source === 'none' && tvResolved.source === 'none'
 
     if (flags.json) {
       const payload: Record<string, unknown> = {
         browserbase: resolvedSource(bbResolved),
         perplexity: resolvedSource(pplxResolved),
         supadata: resolvedSource(sdResolved),
+        tavily: resolvedSource(tvResolved),
       }
 
       if (allNone) {
         payload.globalConfigPath = globalConfigFilePath(this.config.configDir)
-        payload.hint = `Run \`${this.config.bin} setup\` or set BROWSERBASE_API_KEY / PERPLEXITY_API_KEY / SUPADATA_API_KEY.`
+        payload.hint = `Run \`${this.config.bin} setup\` or set BROWSERBASE_API_KEY / PERPLEXITY_API_KEY / SUPADATA_API_KEY / TAVILY_API_KEY.`
       }
 
       printJson(payload)
@@ -81,6 +83,7 @@ Resolution order: env var → project .zurf/config.json (walk-up) → global con
     this.log(humanSourceLine('Browserbase API key', bbResolved, 'BROWSERBASE_API_KEY'))
     this.log(humanSourceLine('Perplexity API key', pplxResolved, 'PERPLEXITY_API_KEY'))
     this.log(humanSourceLine('Supadata API key', sdResolved, 'SUPADATA_API_KEY'))
+    this.log(humanSourceLine('Tavily API key', tvResolved, 'TAVILY_API_KEY'))
 
     if (allNone) {
       this.error(

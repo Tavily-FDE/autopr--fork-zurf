@@ -45,6 +45,11 @@ async function promptSupadata(): Promise<{configured: string; providers: ConfigF
   return {configured: 'Supadata', providers: {supadata: {apiKey: apiKey.trim()}}}
 }
 
+async function promptTavily(): Promise<{configured: string; providers: ConfigFileShape['providers']}> {
+  const apiKey = await promptApiKey('Tavily')
+  return {configured: 'Tavily', providers: {tavily: {apiKey: apiKey.trim()}}}
+}
+
 function resolveScope(flags: {global: boolean; local: boolean}): ConfigScope | undefined {
   if (flags.global) return 'global'
   if (flags.local) return 'local'
@@ -52,7 +57,7 @@ function resolveScope(flags: {global: boolean; local: boolean}): ConfigScope | u
 }
 
 export default class Setup extends Command {
-  static description = `Interactive setup wizard for configuring API keys for all providers (Browserbase, Perplexity, Supadata).
+  static description = `Interactive setup wizard for configuring API keys for all providers (Browserbase, Perplexity, Supadata, Tavily).
 Stores keys in global or local config. Re-run to update or add providers.`
   static examples = [
     '<%= config.bin %> <%= command.id %>',
@@ -68,7 +73,7 @@ Stores keys in global or local config. Re-run to update or add providers.`
       description: 'Store config in .zurf/config.json in the current directory (skip scope prompt)',
     }),
   }
-  static summary = 'Configure API keys for Browserbase, Perplexity, and Supadata'
+  static summary = 'Configure API keys for Browserbase, Perplexity, Supadata, and Tavily'
 
   async run(): Promise<void> {
     const {flags} = await this.parse(Setup)
@@ -83,7 +88,7 @@ Stores keys in global or local config. Re-run to update or add providers.`
         command: this,
         exitCode: 1,
         json: flags.json,
-        message: 'Non-interactive environment detected. Use --global or --local flag, or set API keys via environment variables (BROWSERBASE_API_KEY, PERPLEXITY_API_KEY, SUPADATA_API_KEY).',
+        message: 'Non-interactive environment detected. Use --global or --local flag, or set API keys via environment variables (BROWSERBASE_API_KEY, PERPLEXITY_API_KEY, SUPADATA_API_KEY, TAVILY_API_KEY).',
       }))
 
     const targetPath = scope === 'global'
@@ -94,14 +99,16 @@ Stores keys in global or local config. Re-run to update or add providers.`
     const bbConfigured = Boolean(existing?.providers?.browserbase?.apiKey)
     const pplxConfigured = Boolean(existing?.providers?.perplexity?.apiKey)
     const sdConfigured = Boolean(existing?.providers?.supadata?.apiKey)
+    const tvConfigured = Boolean(existing?.providers?.tavily?.apiKey)
 
     const selectedProviders = process.stdin.isTTY
       ? await selectProviders([
         {configured: bbConfigured, name: 'Browserbase', value: 'browserbase'},
         {configured: pplxConfigured, name: 'Perplexity', value: 'perplexity'},
         {configured: sdConfigured, name: 'Supadata', value: 'supadata'},
+        {configured: tvConfigured, name: 'Tavily', value: 'tavily'},
       ])
-      : ['browserbase', 'perplexity', 'supadata']
+      : ['browserbase', 'perplexity', 'supadata', 'tavily']
 
     const {configUpdate, configured} = await this.collectProviderKeys(selectedProviders)
 
@@ -132,6 +139,7 @@ Stores keys in global or local config. Re-run to update or add providers.`
     for (const provider of selectedProviders) {
       const result = provider === 'browserbase' ? await promptBrowserbase() // eslint-disable-line no-await-in-loop
         : provider === 'supadata' ? await promptSupadata() // eslint-disable-line no-await-in-loop
+        : provider === 'tavily' ? await promptTavily() // eslint-disable-line no-await-in-loop
         : await promptPerplexity() // eslint-disable-line no-await-in-loop
       Object.assign(configUpdate.providers!, result.providers)
       configured.push(result.configured)
