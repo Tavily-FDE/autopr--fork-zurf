@@ -1,6 +1,6 @@
-import {Args, Flags} from '@oclif/core'
+import {Args, Flags, ux} from '@oclif/core'
 
-import {cliError} from '../../lib/cli-errors.js'
+import {cliError, errorMessage, errorStatus} from '../../lib/cli-errors.js'
 import {resolveTavilyApiKey} from '../../lib/config.js'
 import {zurfBaseFlags} from '../../lib/flags.js'
 import {printJson} from '../../lib/json-output.js'
@@ -91,19 +91,36 @@ Requires authentication. Run \`zurf setup\` or set BROWSERBASE_API_KEY (Exa) or 
       return
     }
 
-    const response = await tavilySearch({
-      apiKey: resolved.apiKey,
-      maxResults: flags['num-results'],
-      query,
-    })
+    const search = async (): Promise<void> => {
+      try {
+        const response = await tavilySearch({
+          apiKey: resolved.apiKey,
+          maxResults: flags['num-results'],
+          query,
+        })
 
-    if (isJson) {
-      printJson(buildSearchJsonPayload(response))
-      return
+        if (isJson) {
+          printJson(buildSearchJsonPayload(response))
+          return
+        }
+
+        for (const line of linesForHumanSearch(response)) {
+          this.log(line)
+        }
+      } catch (error) {
+        cliError({command: this, exitCode: 1, json: isJson, message: errorMessage(error), statusCode: errorStatus(error)})
+      }
     }
 
-    for (const line of linesForHumanSearch(response)) {
-      this.log(line)
+    if (isJson) {
+      await search()
+    } else {
+      ux.action.start('Searching the web')
+      try {
+        await search()
+      } finally {
+        ux.action.stop()
+      }
     }
   }
 }
