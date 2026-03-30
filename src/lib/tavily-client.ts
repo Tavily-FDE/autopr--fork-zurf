@@ -14,7 +14,7 @@ export async function tavilySearch(options: {
 
   return {
     query: response.query,
-    requestId: response.responseTime?.toString() ?? 'tavily',
+    requestId: response.requestId,
     results: response.results.map((r) => ({
       title: r.title,
       url: r.url,

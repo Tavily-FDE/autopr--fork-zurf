@@ -10,12 +10,13 @@ import {
   resolveApiKey,
   resolvePerplexityApiKey,
   resolveSupadataApiKey,
+  resolveTavilyApiKey,
   writeApiKeyConfig,
   writeConfig,
 } from '../../src/lib/config.js'
 import {captureEnv, restoreEnv} from '../helpers/env-sandbox.js'
 
-const ENV_KEYS = ['BROWSERBASE_API_KEY', 'HOME', 'PERPLEXITY_API_KEY', 'SUPADATA_API_KEY', 'XDG_CONFIG_HOME'] as const
+const ENV_KEYS = ['BROWSERBASE_API_KEY', 'HOME', 'PERPLEXITY_API_KEY', 'SUPADATA_API_KEY', 'TAVILY_API_KEY', 'XDG_CONFIG_HOME'] as const
 
 describe('config', () => {
   let tmp: string
@@ -30,6 +31,7 @@ describe('config', () => {
     delete process.env.BROWSERBASE_API_KEY
     delete process.env.PERPLEXITY_API_KEY
     delete process.env.SUPADATA_API_KEY
+    delete process.env.TAVILY_API_KEY
     globalConfigDir = path.join(process.env.XDG_CONFIG_HOME, 'zurf')
   })
 
@@ -170,6 +172,26 @@ describe('config', () => {
 
     it('returns none when not set', () => {
       expect(resolveSupadataApiKey({globalConfigDir}).source).to.equal('none')
+    })
+  })
+
+  describe('resolveTavilyApiKey', () => {
+    it('uses TAVILY_API_KEY env var', () => {
+      process.env.TAVILY_API_KEY = 'tv-from-env'
+      const r = resolveTavilyApiKey({globalConfigDir})
+      expect(r).to.deep.include({apiKey: 'tv-from-env', source: 'env'})
+    })
+
+    it('reads from global config file', async () => {
+      const g = globalConfigFilePath(globalConfigDir)
+      await fs.promises.mkdir(path.dirname(g), {recursive: true})
+      await writeConfig(g, {providers: {tavily: {apiKey: 'tv-global'}}})
+      const r = resolveTavilyApiKey({globalConfigDir})
+      expect(r).to.deep.include({apiKey: 'tv-global', source: 'global'})
+    })
+
+    it('returns none when not set', () => {
+      expect(resolveTavilyApiKey({globalConfigDir}).source).to.equal('none')
     })
   })
 })
